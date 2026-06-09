@@ -76,4 +76,65 @@ class LogFileParserTest {
         assertEquals(true, analysis.entries().getFirst().hasDetails());
         assertEquals(true, analysis.entries().getFirst().details().contains("Caused by:"));
     }
+
+    @Test
+    void parsesNestedJsonLogLine() {
+        LogEntry entry = parser.parseLine("""
+                {"@timestamp":"2026-06-09T11:03:13.441+02:00",\
+                "log":{"level":"WARNING","logger":"nl.itqaan.StockClient"},\
+                "service":{"name":"inventory-service"},\
+                "process":{"thread":{"name":"http-nio-8081-exec-5"}},\
+                "message":"Stock response was slow",\
+                "trace":{"id":"7f31c98a"},\
+                "exception":{"stacktrace":"java.net.ConnectException: timeout"}}
+                """);
+
+        assertEquals("2026-06-09T11:03:13.441+02:00", entry.timestamp());
+        assertEquals("WARN", entry.level());
+        assertEquals("inventory-service", entry.service());
+        assertEquals("http-nio-8081-exec-5", entry.thread());
+        assertEquals("nl.itqaan.StockClient", entry.logger());
+        assertEquals("7f31c98a", entry.correlationId());
+        assertEquals(true, entry.hasDetails());
+    }
+
+    @Test
+    void supportsFlatJsonAliases() {
+        LogEntry entry = parser.parseLine("""
+                {"time":"2026-06-09T11:05:00Z","severity":"fatal","app":"gateway",\
+                "thread_name":"worker-2","logger_name":"Gateway",\
+                "msg":"Request failed","correlation_id":"req-22","stack_trace":"failure details"}
+                """);
+
+        assertEquals("ERROR", entry.level());
+        assertEquals("gateway", entry.service());
+        assertEquals("Request failed", entry.message());
+        assertEquals("req-22", entry.correlationId());
+        assertEquals("failure details", entry.details());
+    }
+
+    @Test
+    void keepsMalformedJsonVisible() {
+        LogEntry entry = parser.parseLine("{\"message\":\"incomplete\"");
+
+        assertEquals("UNKNOWN", entry.level());
+        assertEquals("{\"message\":\"incomplete\"", entry.message());
+    }
+
+    @Test
+    void analyzesJsonLinesFile(@TempDir Path directory) throws IOException {
+        Path file = directory.resolve("application.jsonl");
+        Files.writeString(file, String.join(System.lineSeparator(),
+                "{\"level\":\"info\",\"service\":\"gateway\",\"message\":\"Request accepted\"}",
+                "{\"level\":\"warn\",\"service\":\"orders\",\"message\":\"Slow response\"}",
+                "{\"level\":\"error\",\"service\":\"orders\",\"message\":\"Request failed\"}"
+        ));
+
+        LogAnalysis analysis = parser.parse(file);
+
+        assertEquals(3, analysis.totalLines());
+        assertEquals(1, analysis.errors());
+        assertEquals(1, analysis.warnings());
+        assertEquals(2, analysis.services());
+    }
 }

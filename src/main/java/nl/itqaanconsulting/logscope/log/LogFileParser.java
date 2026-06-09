@@ -1,5 +1,9 @@
 package nl.itqaanconsulting.logscope.log;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LogFileParser {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final Pattern STRUCTURED_LINE = Pattern.compile(
             "^(?<timestamp>\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{3})?)\\s+"
@@ -68,6 +74,11 @@ public class LogFileParser {
     }
 
     private Optional<LogEntry> tryParseLine(String line) {
+        Optional<LogEntry> jsonEntry = tryParseJson(line);
+        if (jsonEntry.isPresent()) {
+            return jsonEntry;
+        }
+
         Matcher structured = STRUCTURED_LINE.matcher(line);
         if (structured.matches()) {
             return Optional.of(new LogEntry(
@@ -100,6 +111,71 @@ public class LogFileParser {
         }
 
         return Optional.empty();
+    }
+
+    private Optional<LogEntry> tryParseJson(String line) {
+        String stripped = line.strip();
+        if (!stripped.startsWith("{") || !stripped.endsWith("}")) {
+            return Optional.empty();
+        }
+
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(stripped);
+            String message = text(root, "message", "msg", "event.original");
+            if (message.isBlank()) {
+                return Optional.empty();
+            }
+
+            return Optional.of(new LogEntry(
+                    text(root, "@timestamp", "timestamp", "time"),
+                    normalizeLevel(text(root, "log.level", "level", "severity")),
+                    defaultValue(text(root, "service.name", "service", "application", "app"), "application"),
+                    text(root, "process.thread.name", "thread", "thread_name"),
+                    text(root, "log.logger", "logger", "logger_name"),
+                    message,
+                    text(root, "trace.id", "correlationId", "correlation_id", "traceId"),
+                    text(root, "exception.stacktrace", "stack_trace", "stacktrace", "throwable")
+            ));
+        } catch (JsonProcessingException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private String text(JsonNode root, String... paths) {
+        for (String path : paths) {
+            JsonNode value = nodeAt(root, path);
+            if (value != null && !value.isNull()) {
+                String text = value.isValueNode() ? value.asText() : value.toString();
+                if (!text.isBlank()) {
+                    return text;
+                }
+            }
+        }
+        return "";
+    }
+
+    private JsonNode nodeAt(JsonNode root, String path) {
+        JsonNode current = root;
+        for (String segment : path.split("\\.")) {
+            current = current.get(segment);
+            if (current == null) {
+                return null;
+            }
+        }
+        return current;
+    }
+
+    private String normalizeLevel(String level) {
+        return switch (level.strip().toUpperCase()) {
+            case "WARNING" -> "WARN";
+            case "ERR", "FATAL" -> "ERROR";
+            case "" -> "UNKNOWN";
+            default -> level.strip().toUpperCase();
+        };
+    }
+
+    private String defaultValue(String value, String fallback) {
+        return value.isBlank() ? fallback : value;
     }
 
     private boolean isContinuation(String line) {

@@ -291,7 +291,7 @@ public class DashboardView extends BorderPane {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Open log file");
         chooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Log files", "*.log", "*.txt"),
+                new FileChooser.ExtensionFilter("Log files", "*.log", "*.txt", "*.json", "*.jsonl", "*.ndjson"),
                 new FileChooser.ExtensionFilter("All files", "*.*")
         );
 

@@ -4,7 +4,7 @@ Desktop log analysis application built with Java 21 and JavaFX.
 
 ## Current Version
 
-LogScope can open plain-text log files asynchronously, parse structured and Spring Boot entries, group multiline stacktraces and filter by level or search term. Upcoming iterations add JSON log support and deeper analysis features.
+LogScope can open log files asynchronously, parse plain-text, Spring Boot and JSON Lines entries, group multiline stacktraces and filter by level or search term.
 
 ## Run
 
@@ -12,7 +12,7 @@ LogScope can open plain-text log files asynchronously, parse structured and Spri
 mvn javafx:run
 ```
 
-Use `demo/sample-application.log` for a quick demonstration.
+Use `demo/sample-application.log` or `demo/sample-structured.jsonl` for a quick demonstration.
 
 ## Supported Log Format
 
@@ -21,6 +21,8 @@ Use `demo/sample-application.log` for a quick demonstration.
 ```
 
 Standard Spring Boot console logs are recognized as well. Double-click a table row to inspect its metadata and complete stacktrace.
+
+JSON Lines fields from common structured logging formats are supported, including nested fields such as `log.level`, `service.name`, `trace.id` and `exception.stacktrace`.
 
 ## Test
 
