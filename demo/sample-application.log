@@ -6,3 +6,12 @@
 2026-06-09 10:44:02.117 INFO [gateway] [req-a718f] GET /api/orders/ORD-10481 completed
 2026-06-09 10:45:11.744 WARN [gateway] [req-c022d] Request duration exceeded 1500 ms
 2026-06-09 10:45:12.081 ERROR [inventory-service] [req-c022d] Database connection timed out
+java.sql.SQLTransientConnectionException: Connection is not available
+	at com.zaxxer.hikari.pool.HikariPool.createTimeoutException(HikariPool.java:696)
+	at com.zaxxer.hikari.pool.HikariPool.getConnection(HikariPool.java:181)
+Caused by: java.net.ConnectException: Connection refused
+	at java.base/sun.nio.ch.Net.pollConnect(Native Method)
+2026-06-09T10:46:03.510+02:00 INFO 14228 --- [order-service] [nio-8080-exec-4] n.i.orders.OrderController : Order ORD-10483 retrieved
+2026-06-09T10:46:04.122+02:00 ERROR 14228 --- [order-service] [nio-8080-exec-5] n.i.orders.OrderController : Unexpected response from customer service
+org.springframework.web.client.HttpServerErrorException$ServiceUnavailable: 503 Service Unavailable
+	at org.springframework.web.client.DefaultResponseErrorHandler.handleError(DefaultResponseErrorHandler.java:186)

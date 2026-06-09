@@ -9,9 +9,12 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -124,7 +127,7 @@ public class DashboardView extends BorderPane {
         filters.getStyleClass().add("filter-bar");
 
         TableView<LogEntry> logTable = createLogTable();
-        VBox logPanel = panel("Log entries", status, logTable);
+        VBox logPanel = panel("Log entries - double-click a row for details", status, logTable);
         VBox.setVgrow(logPanel, Priority.ALWAYS);
 
         VBox content = new VBox(18, eyebrow, fileName, metrics, filters, logPanel);
@@ -189,6 +192,15 @@ public class DashboardView extends BorderPane {
         table.getColumns().add(service);
         table.getColumns().add(message);
         table.getColumns().add(correlation);
+        table.setRowFactory(view -> {
+            TableRow<LogEntry> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    showDetails(row.getItem());
+                }
+            });
+            return row;
+        });
         return table;
     }
 
@@ -204,6 +216,48 @@ public class DashboardView extends BorderPane {
         warningFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         infoFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         otherFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+    }
+
+    private void showDetails(LogEntry entry) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Log entry details");
+        dialog.setHeaderText(entry.level() + " - " + entry.message());
+        dialog.getDialogPane().getButtonTypes().add(javafx.scene.control.ButtonType.CLOSE);
+
+        Label metadata = new Label(metadata(entry));
+        metadata.getStyleClass().add("detail-metadata");
+
+        TextArea details = new TextArea(fullDetails(entry));
+        details.setEditable(false);
+        details.setWrapText(false);
+        details.getStyleClass().add("detail-text");
+        details.setPrefColumnCount(100);
+        details.setPrefRowCount(22);
+
+        VBox content = new VBox(10, metadata, details);
+        content.setPrefWidth(820);
+        dialog.getDialogPane().setContent(content);
+        dialog.showAndWait();
+    }
+
+    private String metadata(LogEntry entry) {
+        return "Timestamp: " + valueOrDash(entry.timestamp())
+                + "    Service: " + valueOrDash(entry.service())
+                + "    Thread: " + valueOrDash(entry.thread())
+                + System.lineSeparator()
+                + "Logger: " + valueOrDash(entry.logger())
+                + "    Correlation ID: " + valueOrDash(entry.correlationId());
+    }
+
+    private String fullDetails(LogEntry entry) {
+        if (!entry.hasDetails()) {
+            return entry.message();
+        }
+        return entry.message() + System.lineSeparator() + entry.details();
+    }
+
+    private String valueOrDash(String value) {
+        return value.isBlank() ? "-" : value;
     }
 
     private void applyFilters() {
@@ -227,7 +281,10 @@ public class DashboardView extends BorderPane {
         }
         return entry.message().toLowerCase(Locale.ROOT).contains(query)
                 || entry.service().toLowerCase(Locale.ROOT).contains(query)
-                || entry.correlationId().toLowerCase(Locale.ROOT).contains(query);
+                || entry.correlationId().toLowerCase(Locale.ROOT).contains(query)
+                || entry.thread().toLowerCase(Locale.ROOT).contains(query)
+                || entry.logger().toLowerCase(Locale.ROOT).contains(query)
+                || entry.details().toLowerCase(Locale.ROOT).contains(query);
     }
 
     private void chooseLogFile() {
