@@ -1,0 +1,106 @@
+.root {
+    -fx-font-family: "Segoe UI";
+    -fx-font-size: 13px;
+    -fx-background-color: #f4f6f7;
+}
+
+.header {
+    -fx-padding: 16 22;
+    -fx-background-color: #173044;
+    -fx-border-color: transparent transparent #15967f transparent;
+    -fx-border-width: 0 0 3 0;
+}
+
+.brand {
+    -fx-text-fill: white;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.status-pill {
+    -fx-padding: 4 9;
+    -fx-background-color: #d8f1eb;
+    -fx-background-radius: 12;
+    -fx-text-fill: #086451;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.primary-button {
+    -fx-padding: 8 15;
+    -fx-background-color: #0b8973;
+    -fx-background-radius: 5;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.primary-button:hover {
+    -fx-background-color: #08705f;
+}
+
+.navigation {
+    -fx-padding: 25 14;
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent #dce2e5 transparent transparent;
+}
+
+.nav-caption, .eyebrow {
+    -fx-text-fill: #77858f;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.nav-item {
+    -fx-padding: 10 12;
+    -fx-text-fill: #44535e;
+    -fx-background-radius: 5;
+}
+
+.nav-item.active {
+    -fx-background-color: #e4f3ef;
+    -fx-text-fill: #086b59;
+    -fx-font-weight: bold;
+}
+
+.page-title {
+    -fx-font-size: 25px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #17222b;
+}
+
+.metric-card, .panel {
+    -fx-padding: 16;
+    -fx-background-color: white;
+    -fx-background-radius: 7;
+    -fx-border-color: #dbe1e4;
+    -fx-border-radius: 7;
+}
+
+.metric-label, .panel-subtitle {
+    -fx-text-fill: #6b7881;
+}
+
+.metric-value {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.metric-value.balance { -fx-text-fill: #173044; }
+.metric-value.income { -fx-text-fill: #08725f; }
+.metric-value.expense { -fx-text-fill: #a33a3f; }
+.metric-value.attention { -fx-text-fill: #9a6a13; }
+
+.panel-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #26333c;
+}
+
+.chart, .table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
