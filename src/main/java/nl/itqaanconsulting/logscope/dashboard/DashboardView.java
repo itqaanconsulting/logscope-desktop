@@ -2,6 +2,9 @@ package nl.itqaanconsulting.logscope.dashboard;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -15,15 +18,40 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import nl.itqaanconsulting.logscope.log.LogAnalysis;
 import nl.itqaanconsulting.logscope.log.LogEntry;
+import nl.itqaanconsulting.logscope.log.LogFileParser;
+
+import java.io.File;
+import java.util.Locale;
+import java.util.function.Function;
 
 public class DashboardView extends BorderPane {
+
+    private final LogFileParser parser = new LogFileParser();
+    private final ObservableList<LogEntry> entries = FXCollections.observableArrayList();
+    private final FilteredList<LogEntry> filteredEntries = new FilteredList<>(entries);
+
+    private final Label fileName = new Label("No log file selected");
+    private final Label totalValue = metricValue("0", "total");
+    private final Label errorValue = metricValue("0", "error");
+    private final Label warningValue = metricValue("0", "warning");
+    private final Label serviceValue = metricValue("0", "service");
+    private final Label status = new Label("Open a .log file to start");
+    private final TextField search = new TextField();
+    private final CheckBox errorFilter = levelFilter("ERROR");
+    private final CheckBox warningFilter = levelFilter("WARN");
+    private final CheckBox infoFilter = levelFilter("INFO");
+    private final CheckBox otherFilter = levelFilter("OTHER");
+    private final Button openButton = new Button("Open log file");
 
     public DashboardView() {
         getStyleClass().add("app-shell");
         setTop(createHeader());
         setLeft(createNavigation());
-        setCenter(createContent(new DashboardSummary(12_486, 23, 117, 4)));
+        setCenter(createContent());
+        configureFiltering();
     }
 
     private HBox createHeader() {
@@ -36,8 +64,8 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button openButton = new Button("Open log file");
         openButton.getStyleClass().add("primary-button");
+        openButton.setOnAction(event -> chooseLogFile());
 
         HBox header = new HBox(14, brand, mode, spacer, openButton);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -72,82 +100,76 @@ public class DashboardView extends BorderPane {
         return item;
     }
 
-    private VBox createContent(DashboardSummary summary) {
+    private VBox createContent() {
         Label eyebrow = new Label("APPLICATION LOG");
         eyebrow.getStyleClass().add("eyebrow");
 
-        Label title = new Label("order-service.log");
-        title.getStyleClass().add("page-title");
+        fileName.getStyleClass().add("page-title");
 
         HBox metrics = new HBox(
                 12,
-                metricCard("Total lines", summary.totalLines(), "total"),
-                metricCard("Errors", summary.errors(), "error"),
-                metricCard("Warnings", summary.warnings(), "warning"),
-                metricCard("Services", summary.services(), "service")
+                metricCard("Total lines", totalValue),
+                metricCard("Errors", errorValue),
+                metricCard("Warnings", warningValue),
+                metricCard("Services", serviceValue)
         );
         metrics.getChildren().forEach(node -> HBox.setHgrow(node, Priority.ALWAYS));
 
-        TextField search = new TextField();
         search.setPromptText("Search message, service or correlation ID");
         search.getStyleClass().add("search-field");
+        HBox.setHgrow(search, Priority.ALWAYS);
 
-        CheckBox error = levelFilter("ERROR", true);
-        CheckBox warning = levelFilter("WARN", true);
-        CheckBox info = levelFilter("INFO", true);
-        HBox filters = new HBox(12, search, error, warning, info);
+        HBox filters = new HBox(12, search, errorFilter, warningFilter, infoFilter, otherFilter);
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
 
         TableView<LogEntry> logTable = createLogTable();
-        VBox logPanel = panel(
-                "Log entries",
-                "Showing structured entries from the selected file",
-                logTable
-        );
+        VBox logPanel = panel("Log entries", status, logTable);
         VBox.setVgrow(logPanel, Priority.ALWAYS);
 
-        VBox content = new VBox(18, eyebrow, title, metrics, filters, logPanel);
+        VBox content = new VBox(18, eyebrow, fileName, metrics, filters, logPanel);
         content.setPadding(new Insets(26));
         VBox.setVgrow(logPanel, Priority.ALWAYS);
         return content;
     }
 
-    private VBox metricCard(String label, int value, String accentClass) {
+    private VBox metricCard(String label, Label value) {
         Label caption = new Label(label);
         caption.getStyleClass().add("metric-label");
 
-        Label amount = new Label(String.format("%,d", value));
-        amount.getStyleClass().addAll("metric-value", accentClass);
-
-        VBox card = new VBox(8, caption, amount);
+        VBox card = new VBox(8, caption, value);
         card.getStyleClass().add("metric-card");
         card.setMaxWidth(Double.MAX_VALUE);
         return card;
     }
 
-    private CheckBox levelFilter(String text, boolean selected) {
+    private Label metricValue(String text, String accentClass) {
+        Label value = new Label(text);
+        value.getStyleClass().addAll("metric-value", accentClass);
+        return value;
+    }
+
+    private CheckBox levelFilter(String text) {
         CheckBox filter = new CheckBox(text);
-        filter.setSelected(selected);
+        filter.setSelected(true);
         filter.getStyleClass().add("level-filter");
         return filter;
     }
 
-    private VBox panel(String title, String subtitle, javafx.scene.Node content) {
+    private VBox panel(String title, Label subtitle, javafx.scene.Node content) {
         Label heading = new Label(title);
         heading.getStyleClass().add("panel-title");
+        subtitle.getStyleClass().add("panel-subtitle");
 
-        Label description = new Label(subtitle);
-        description.getStyleClass().add("panel-subtitle");
-
-        VBox panel = new VBox(6, heading, description, content);
+        VBox panel = new VBox(6, heading, subtitle, content);
         panel.getStyleClass().add("panel");
         VBox.setVgrow(content, Priority.ALWAYS);
         return panel;
     }
 
     private TableView<LogEntry> createLogTable() {
-        TableView<LogEntry> table = new TableView<>();
+        TableView<LogEntry> table = new TableView<>(filteredEntries);
+        table.setPlaceholder(new Label("No log entries loaded"));
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         TableColumn<LogEntry, String> timestamp = column("Timestamp", LogEntry::timestamp);
@@ -156,9 +178,9 @@ public class DashboardView extends BorderPane {
         TableColumn<LogEntry, String> message = column("Message", LogEntry::message);
         TableColumn<LogEntry, String> correlation = column("Correlation ID", LogEntry::correlationId);
 
-        timestamp.setPrefWidth(150);
+        timestamp.setPrefWidth(165);
         level.setPrefWidth(75);
-        service.setPrefWidth(130);
+        service.setPrefWidth(140);
         message.setPrefWidth(420);
         correlation.setPrefWidth(145);
 
@@ -167,25 +189,114 @@ public class DashboardView extends BorderPane {
         table.getColumns().add(service);
         table.getColumns().add(message);
         table.getColumns().add(correlation);
-        table.setItems(FXCollections.observableArrayList(
-                new LogEntry("10:42:18.413", "ERROR", "order-service",
-                        "Payment provider returned HTTP 503", "req-91ac2"),
-                new LogEntry("10:42:17.982", "WARN", "inventory-service",
-                        "Stock reservation expires in 30 seconds", "req-91ac2"),
-                new LogEntry("10:42:17.650", "INFO", "order-service",
-                        "Order ORD-10482 validated", "req-91ac2"),
-                new LogEntry("10:42:16.204", "INFO", "gateway",
-                        "POST /api/orders accepted", "req-91ac2")
-        ));
         return table;
     }
 
-    private TableColumn<LogEntry, String> column(
-            String title,
-            java.util.function.Function<LogEntry, String> value
-    ) {
+    private TableColumn<LogEntry, String> column(String title, Function<LogEntry, String> value) {
         TableColumn<LogEntry, String> column = new TableColumn<>(title);
         column.setCellValueFactory(entry -> new SimpleStringProperty(value.apply(entry.getValue())));
         return column;
+    }
+
+    private void configureFiltering() {
+        search.textProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+        errorFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+        warningFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+        infoFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+        otherFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+    }
+
+    private void applyFilters() {
+        String query = search.getText().strip().toLowerCase(Locale.ROOT);
+        filteredEntries.setPredicate(entry -> levelIsSelected(entry.level()) && matchesQuery(entry, query));
+        updateStatus();
+    }
+
+    private boolean levelIsSelected(String level) {
+        return switch (level) {
+            case "ERROR" -> errorFilter.isSelected();
+            case "WARN" -> warningFilter.isSelected();
+            case "INFO" -> infoFilter.isSelected();
+            default -> otherFilter.isSelected();
+        };
+    }
+
+    private boolean matchesQuery(LogEntry entry, String query) {
+        if (query.isEmpty()) {
+            return true;
+        }
+        return entry.message().toLowerCase(Locale.ROOT).contains(query)
+                || entry.service().toLowerCase(Locale.ROOT).contains(query)
+                || entry.correlationId().toLowerCase(Locale.ROOT).contains(query);
+    }
+
+    private void chooseLogFile() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Open log file");
+        chooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Log files", "*.log", "*.txt"),
+                new FileChooser.ExtensionFilter("All files", "*.*")
+        );
+
+        File selected = chooser.showOpenDialog(getScene().getWindow());
+        if (selected != null) {
+            loadFile(selected);
+        }
+    }
+
+    private void loadFile(File file) {
+        openButton.setDisable(true);
+        fileName.setText(file.getName());
+        status.setText("Reading and parsing log file...");
+
+        Task<LogAnalysis> task = new Task<>() {
+            @Override
+            protected LogAnalysis call() throws Exception {
+                return parser.parse(file.toPath());
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            showAnalysis(task.getValue());
+            openButton.setDisable(false);
+        });
+        task.setOnFailed(event -> {
+            entries.clear();
+            resetMetrics();
+            status.setText("Could not read file: " + task.getException().getMessage());
+            openButton.setDisable(false);
+        });
+
+        Thread thread = new Thread(task, "log-file-parser");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void showAnalysis(LogAnalysis analysis) {
+        entries.setAll(analysis.entries());
+        totalValue.setText(format(analysis.totalLines()));
+        errorValue.setText(format(analysis.errors()));
+        warningValue.setText(format(analysis.warnings()));
+        serviceValue.setText(format(analysis.services()));
+        applyFilters();
+    }
+
+    private void resetMetrics() {
+        totalValue.setText("0");
+        errorValue.setText("0");
+        warningValue.setText("0");
+        serviceValue.setText("0");
+    }
+
+    private void updateStatus() {
+        if (entries.isEmpty()) {
+            status.setText("Open a .log file to start");
+            return;
+        }
+        status.setText("Showing " + format(filteredEntries.size()) + " of " + format(entries.size()) + " entries");
+    }
+
+    private String format(int value) {
+        return String.format(Locale.ROOT, "%,d", value);
     }
 }

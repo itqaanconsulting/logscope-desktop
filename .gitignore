@@ -2,5 +2,5 @@ target/
 .idea/
 *.iml
 *.log
+!demo/sample-application.log
 .DS_Store
-ledgerdesk.db

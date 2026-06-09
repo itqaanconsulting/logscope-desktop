@@ -1,0 +1,8 @@
+2026-06-09 10:42:16.204 INFO [gateway] [req-91ac2] POST /api/orders accepted
+2026-06-09 10:42:17.650 INFO [order-service] [req-91ac2] Order ORD-10482 validated
+2026-06-09 10:42:17.982 WARN [inventory-service] [req-91ac2] Stock reservation expires in 30 seconds
+2026-06-09 10:42:18.413 ERROR [order-service] [req-91ac2] Payment provider returned HTTP 503
+2026-06-09 10:42:19.031 INFO [notification-service] [req-91ac2] Payment failure notification queued
+2026-06-09 10:44:02.117 INFO [gateway] [req-a718f] GET /api/orders/ORD-10481 completed
+2026-06-09 10:45:11.744 WARN [gateway] [req-c022d] Request duration exceeded 1500 ms
+2026-06-09 10:45:12.081 ERROR [inventory-service] [req-c022d] Database connection timed out
