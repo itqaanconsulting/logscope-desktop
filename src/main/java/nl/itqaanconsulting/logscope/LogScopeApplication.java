@@ -1,20 +1,20 @@
-package nl.itqaanconsulting.ledgerdesk;
+package nl.itqaanconsulting.logscope;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import nl.itqaanconsulting.ledgerdesk.dashboard.DashboardView;
+import nl.itqaanconsulting.logscope.dashboard.DashboardView;
 
-public class LedgerDeskApplication extends Application {
+public class LogScopeApplication extends Application {
 
     @Override
     public void start(Stage stage) {
         Scene scene = new Scene(new DashboardView(), 1180, 760);
         scene.getStylesheets().add(
-                LedgerDeskApplication.class.getResource("/styles/ledgerdesk.css").toExternalForm()
+                LogScopeApplication.class.getResource("/styles/logscope.css").toExternalForm()
         );
 
-        stage.setTitle("LedgerDesk");
+        stage.setTitle("LogScope Desktop");
         stage.setMinWidth(940);
         stage.setMinHeight(640);
         stage.setScene(scene);

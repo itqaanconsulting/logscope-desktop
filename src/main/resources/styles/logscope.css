@@ -85,10 +85,27 @@
     -fx-font-weight: bold;
 }
 
-.metric-value.balance { -fx-text-fill: #173044; }
-.metric-value.income { -fx-text-fill: #08725f; }
-.metric-value.expense { -fx-text-fill: #a33a3f; }
-.metric-value.attention { -fx-text-fill: #9a6a13; }
+.metric-value.total { -fx-text-fill: #173044; }
+.metric-value.error { -fx-text-fill: #a33a3f; }
+.metric-value.warning { -fx-text-fill: #9a6a13; }
+.metric-value.service { -fx-text-fill: #08725f; }
+
+.filter-bar {
+    -fx-padding: 12;
+    -fx-background-color: white;
+    -fx-background-radius: 7;
+    -fx-border-color: #dbe1e4;
+    -fx-border-radius: 7;
+}
+
+.search-field {
+    -fx-pref-width: 340;
+}
+
+.level-filter {
+    -fx-padding: 7 11;
+    -fx-background-radius: 5;
+}
 
 .panel-title {
     -fx-font-size: 16px;
