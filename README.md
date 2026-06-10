@@ -34,10 +34,31 @@ JSON Lines fields from common structured logging formats are supported, includin
 mvn test
 ```
 
+## Package For Windows
+
+Create a standalone application containing its own Java runtime:
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+Packaging requires a full JDK 21 or newer with `jpackage`. The generated application itself does not require Java.
+
+Start the packaged application with:
+
+```powershell
+.\target\dist\LogScope\LogScope.exe
+```
+
+An MSI can be built on a machine with WiX installed:
+
+```powershell
+.\scripts\package-windows.ps1 -Type msi
+```
+
 ## Planned Scope
 
 - Open large `.log` files without blocking the interface
 - Filter by level, service, time and correlation ID
 - Search plain-text and structured JSON logs
 - Inspect stack traces and log details
-- Package a Windows installer with `jpackage`
