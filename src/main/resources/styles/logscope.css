@@ -98,6 +98,31 @@
     -fx-border-radius: 7;
 }
 
+.drop-zone {
+    -fx-padding: 13;
+    -fx-background-color: #eef5f4;
+    -fx-background-radius: 7;
+    -fx-border-color: #9bbcb5;
+    -fx-border-radius: 7;
+    -fx-border-style: segments(7, 5);
+}
+
+.drop-zone.drag-active {
+    -fx-background-color: #d8f1eb;
+    -fx-border-color: #0b8973;
+    -fx-border-width: 2;
+}
+
+.drop-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: #29433f;
+}
+
+.drop-formats {
+    -fx-font-size: 10px;
+    -fx-text-fill: #6b7881;
+}
+
 .search-field {
     -fx-pref-width: 340;
 }

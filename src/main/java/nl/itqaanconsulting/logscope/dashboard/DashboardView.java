@@ -21,13 +21,17 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.stage.FileChooser;
 import nl.itqaanconsulting.logscope.log.LogAnalysis;
 import nl.itqaanconsulting.logscope.log.LogEntry;
 import nl.itqaanconsulting.logscope.log.LogFileParser;
+import nl.itqaanconsulting.logscope.log.LogFileSupport;
 
 import java.io.File;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.function.Function;
 
 public class DashboardView extends BorderPane {
@@ -48,6 +52,7 @@ public class DashboardView extends BorderPane {
     private final CheckBox infoFilter = levelFilter("INFO");
     private final CheckBox otherFilter = levelFilter("OTHER");
     private final Button openButton = new Button("Open log file");
+    private final VBox dropZone = createDropZone();
 
     public DashboardView() {
         getStyleClass().add("app-shell");
@@ -55,6 +60,7 @@ public class DashboardView extends BorderPane {
         setLeft(createNavigation());
         setCenter(createContent());
         configureFiltering();
+        configureDragAndDrop();
     }
 
     private HBox createHeader() {
@@ -130,7 +136,7 @@ public class DashboardView extends BorderPane {
         VBox logPanel = panel("Log entries - double-click a row for details", status, logTable);
         VBox.setVgrow(logPanel, Priority.ALWAYS);
 
-        VBox content = new VBox(18, eyebrow, fileName, metrics, filters, logPanel);
+        VBox content = new VBox(18, eyebrow, fileName, dropZone, metrics, filters, logPanel);
         content.setPadding(new Insets(26));
         VBox.setVgrow(logPanel, Priority.ALWAYS);
         return content;
@@ -144,6 +150,19 @@ public class DashboardView extends BorderPane {
         card.getStyleClass().add("metric-card");
         card.setMaxWidth(Double.MAX_VALUE);
         return card;
+    }
+
+    private VBox createDropZone() {
+        Label title = new Label("Drop a log file here");
+        title.getStyleClass().add("drop-title");
+
+        Label formats = new Label("LOG, TXT, JSON, JSONL or NDJSON");
+        formats.getStyleClass().add("drop-formats");
+
+        VBox zone = new VBox(3, title, formats);
+        zone.setAlignment(Pos.CENTER);
+        zone.getStyleClass().add("drop-zone");
+        return zone;
     }
 
     private Label metricValue(String text, String accentClass) {
@@ -216,6 +235,40 @@ public class DashboardView extends BorderPane {
         warningFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         infoFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         otherFilter.selectedProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+    }
+
+    private void configureDragAndDrop() {
+        setOnDragOver(event -> {
+            Dragboard dragboard = event.getDragboard();
+            if (dragboard.hasFiles() && LogFileSupport.firstSupported(dragboard.getFiles()).isPresent()) {
+                event.acceptTransferModes(TransferMode.COPY);
+            }
+            event.consume();
+        });
+
+        setOnDragEntered(event -> {
+            if (event.getDragboard().hasFiles()
+                    && LogFileSupport.firstSupported(event.getDragboard().getFiles()).isPresent()) {
+                dropZone.getStyleClass().add("drag-active");
+            }
+            event.consume();
+        });
+
+        setOnDragExited(event -> {
+            dropZone.getStyleClass().remove("drag-active");
+            event.consume();
+        });
+
+        setOnDragDropped(event -> {
+            dropZone.getStyleClass().remove("drag-active");
+            Optional<File> file = LogFileSupport.firstSupported(event.getDragboard().getFiles());
+            file.ifPresentOrElse(
+                    this::loadFile,
+                    () -> status.setText("Unsupported file. Use LOG, TXT, JSON, JSONL or NDJSON.")
+            );
+            event.setDropCompleted(file.isPresent());
+            event.consume();
+        });
     }
 
     private void showDetails(LogEntry entry) {
