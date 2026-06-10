@@ -7,6 +7,10 @@ import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Dialog;
@@ -28,6 +32,8 @@ import nl.itqaanconsulting.logscope.log.LogAnalysis;
 import nl.itqaanconsulting.logscope.log.LogEntry;
 import nl.itqaanconsulting.logscope.log.LogFileParser;
 import nl.itqaanconsulting.logscope.log.LogFileSupport;
+import nl.itqaanconsulting.logscope.log.TimelineAggregator;
+import nl.itqaanconsulting.logscope.log.TimelineBucket;
 
 import java.io.File;
 import java.util.Locale;
@@ -37,6 +43,7 @@ import java.util.function.Function;
 public class DashboardView extends BorderPane {
 
     private final LogFileParser parser = new LogFileParser();
+    private final TimelineAggregator timelineAggregator = new TimelineAggregator();
     private final ObservableList<LogEntry> entries = FXCollections.observableArrayList();
     private final FilteredList<LogEntry> filteredEntries = new FilteredList<>(entries);
 
@@ -53,6 +60,7 @@ public class DashboardView extends BorderPane {
     private final CheckBox otherFilter = levelFilter("OTHER");
     private final Button openButton = new Button("Open log file");
     private final VBox dropZone = createDropZone();
+    private final BarChart<String, Number> timelineChart = createTimelineChart();
 
     public DashboardView() {
         getStyleClass().add("app-shell");
@@ -132,11 +140,14 @@ public class DashboardView extends BorderPane {
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
 
+        Label timelineStatus = new Label("Errors and warnings per minute");
+        VBox timelinePanel = panel("Event timeline", timelineStatus, timelineChart);
+
         TableView<LogEntry> logTable = createLogTable();
         VBox logPanel = panel("Log entries - double-click a row for details", status, logTable);
         VBox.setVgrow(logPanel, Priority.ALWAYS);
 
-        VBox content = new VBox(18, eyebrow, fileName, dropZone, metrics, filters, logPanel);
+        VBox content = new VBox(14, eyebrow, fileName, dropZone, metrics, timelinePanel, filters, logPanel);
         content.setPadding(new Insets(26));
         VBox.setVgrow(logPanel, Priority.ALWAYS);
         return content;
@@ -163,6 +174,27 @@ public class DashboardView extends BorderPane {
         zone.setAlignment(Pos.CENTER);
         zone.getStyleClass().add("drop-zone");
         return zone;
+    }
+
+    private BarChart<String, Number> createTimelineChart() {
+        CategoryAxis timeAxis = new CategoryAxis();
+        timeAxis.setLabel("Minute");
+
+        NumberAxis countAxis = new NumberAxis();
+        countAxis.setLabel("Events");
+        countAxis.setForceZeroInRange(true);
+        countAxis.setMinorTickVisible(false);
+
+        BarChart<String, Number> chart = new BarChart<>(timeAxis, countAxis);
+        chart.setAnimated(false);
+        chart.setCategoryGap(4);
+        chart.setBarGap(1);
+        chart.setLegendVisible(true);
+        chart.setMinHeight(165);
+        chart.setPrefHeight(165);
+        chart.setMaxHeight(165);
+        chart.getStyleClass().add("timeline-chart");
+        return chart;
     }
 
     private Label metricValue(String text, String accentClass) {
@@ -316,6 +348,7 @@ public class DashboardView extends BorderPane {
     private void applyFilters() {
         String query = search.getText().strip().toLowerCase(Locale.ROOT);
         filteredEntries.setPredicate(entry -> levelIsSelected(entry.level()) && matchesQuery(entry, query));
+        updateTimeline(filteredEntries);
         updateStatus();
     }
 
@@ -391,11 +424,28 @@ public class DashboardView extends BorderPane {
         applyFilters();
     }
 
+    private void updateTimeline(java.util.List<LogEntry> logEntries) {
+        XYChart.Series<String, Number> errors = new XYChart.Series<>();
+        errors.setName("Errors");
+        XYChart.Series<String, Number> warnings = new XYChart.Series<>();
+        warnings.setName("Warnings");
+
+        for (TimelineBucket bucket : timelineAggregator.aggregate(logEntries)) {
+            errors.getData().add(new XYChart.Data<>(bucket.label(), bucket.errors()));
+            warnings.getData().add(new XYChart.Data<>(bucket.label(), bucket.warnings()));
+        }
+
+        timelineChart.getData().clear();
+        timelineChart.getData().add(errors);
+        timelineChart.getData().add(warnings);
+    }
+
     private void resetMetrics() {
         totalValue.setText("0");
         errorValue.setText("0");
         warningValue.setText("0");
         serviceValue.setText("0");
+        timelineChart.getData().clear();
     }
 
     private void updateStatus() {

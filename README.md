@@ -4,7 +4,7 @@ Desktop log analysis application built with Java 21 and JavaFX.
 
 ## Current Version
 
-LogScope can open or receive log files through drag-and-drop, parse them asynchronously and filter the resulting entries by level or search term. Plain-text, Spring Boot and JSON Lines formats are supported.
+LogScope can open or receive log files through drag-and-drop, parse them asynchronously and filter the resulting entries by level or search term. A timeline highlights error and warning peaks per minute. Plain-text, Spring Boot and JSON Lines formats are supported.
 
 ## Run
 
@@ -36,6 +36,5 @@ mvn test
 - Filter by level, service, time and correlation ID
 - Search plain-text and structured JSON logs
 - Inspect stack traces and log details
-- Visualize errors and warnings over time
 - Export filtered results
 - Package a Windows installer with `jpackage`

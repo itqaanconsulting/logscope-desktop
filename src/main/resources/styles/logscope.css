@@ -156,3 +156,11 @@
 .chart-plot-background {
     -fx-background-color: transparent;
 }
+
+.timeline-chart .default-color0.chart-bar {
+    -fx-bar-fill: #a33a3f;
+}
+
+.timeline-chart .default-color1.chart-bar {
+    -fx-bar-fill: #c48b27;
+}
