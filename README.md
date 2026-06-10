@@ -6,6 +6,8 @@ Desktop log analysis application built with Java 21 and JavaFX.
 
 LogScope can open or receive log files through drag-and-drop, parse them asynchronously and filter the resulting entries by level or search term. A timeline highlights error and warning peaks per minute. Plain-text, Spring Boot and JSON Lines formats are supported.
 
+The sidebar provides dedicated log viewer, timeline, saved filter and recent file views. Saved filters and recent files are retained for the current application session.
+
 ## Run
 
 ```powershell

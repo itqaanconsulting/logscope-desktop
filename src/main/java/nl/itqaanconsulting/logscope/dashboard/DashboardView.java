@@ -7,6 +7,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.NumberAxis;
@@ -15,11 +16,13 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -36,7 +39,11 @@ import nl.itqaanconsulting.logscope.log.TimelineAggregator;
 import nl.itqaanconsulting.logscope.log.TimelineBucket;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -46,6 +53,9 @@ public class DashboardView extends BorderPane {
     private final TimelineAggregator timelineAggregator = new TimelineAggregator();
     private final ObservableList<LogEntry> entries = FXCollections.observableArrayList();
     private final FilteredList<LogEntry> filteredEntries = new FilteredList<>(entries);
+    private final List<File> recentFiles = new ArrayList<>();
+    private final List<FilterPreset> savedFilters = new ArrayList<>();
+    private final Map<View, Button> navigationButtons = new LinkedHashMap<>();
 
     private final Label fileName = new Label("No log file selected");
     private final Label totalValue = metricValue("0", "total");
@@ -61,12 +71,15 @@ public class DashboardView extends BorderPane {
     private final Button openButton = new Button("Open log file");
     private final VBox dropZone = createDropZone();
     private final BarChart<String, Number> timelineChart = createTimelineChart();
+    private View activeView = View.LOG_VIEWER;
 
     public DashboardView() {
+        savedFilters.add(new FilterPreset("Errors only", "", true, false, false, false));
+        savedFilters.add(new FilterPreset("Warnings and errors", "", true, true, false, false));
         getStyleClass().add("app-shell");
         setTop(createHeader());
         setLeft(createNavigation());
-        setCenter(createContent());
+        showView(View.LOG_VIEWER);
         configureFiltering();
         configureDragAndDrop();
     }
@@ -97,27 +110,48 @@ public class DashboardView extends BorderPane {
         VBox navigation = new VBox(
                 8,
                 section,
-                navItem("Log viewer", true),
-                navItem("Timeline", false),
-                navItem("Saved filters", false),
-                navItem("Recent files", false)
+                navItem("Log viewer", View.LOG_VIEWER),
+                navItem("Timeline", View.TIMELINE),
+                navItem("Saved filters", View.SAVED_FILTERS),
+                navItem("Recent files", View.RECENT_FILES)
         );
         navigation.getStyleClass().add("navigation");
         navigation.setPrefWidth(210);
         return navigation;
     }
 
-    private Label navItem(String text, boolean active) {
-        Label item = new Label(text);
+    private Button navItem(String text, View view) {
+        Button item = new Button(text);
         item.setMaxWidth(Double.MAX_VALUE);
+        item.setAlignment(Pos.CENTER_LEFT);
         item.getStyleClass().add("nav-item");
-        if (active) {
+        item.setOnAction(event -> showView(view));
+        navigationButtons.put(view, item);
+        if (view == activeView) {
             item.getStyleClass().add("active");
         }
         return item;
     }
 
-    private VBox createContent() {
+    private void showView(View view) {
+        activeView = view;
+        navigationButtons.forEach((candidate, button) -> {
+            button.getStyleClass().remove("active");
+            if (candidate == view) {
+                button.getStyleClass().add("active");
+            }
+        });
+
+        Node content = switch (view) {
+            case LOG_VIEWER -> createLogViewerContent();
+            case TIMELINE -> createTimelineContent();
+            case SAVED_FILTERS -> createSavedFiltersContent();
+            case RECENT_FILES -> createRecentFilesContent();
+        };
+        setCenter(content);
+    }
+
+    private VBox createLogViewerContent() {
         Label eyebrow = new Label("APPLICATION LOG");
         eyebrow.getStyleClass().add("eyebrow");
 
@@ -140,16 +174,144 @@ public class DashboardView extends BorderPane {
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
 
-        Label timelineStatus = new Label("Errors and warnings per minute");
-        VBox timelinePanel = panel("Event timeline", timelineStatus, timelineChart);
-
         TableView<LogEntry> logTable = createLogTable();
         VBox logPanel = panel("Log entries - double-click a row for details", status, logTable);
         VBox.setVgrow(logPanel, Priority.ALWAYS);
 
-        VBox content = new VBox(14, eyebrow, fileName, dropZone, metrics, timelinePanel, filters, logPanel);
+        VBox content = new VBox(14, eyebrow, fileName, dropZone, metrics, filters, logPanel);
         content.setPadding(new Insets(26));
         VBox.setVgrow(logPanel, Priority.ALWAYS);
+        return content;
+    }
+
+    private VBox createTimelineContent() {
+        Label eyebrow = new Label("ANALYSIS");
+        eyebrow.getStyleClass().add("eyebrow");
+
+        Label title = new Label("Event timeline");
+        title.getStyleClass().add("page-title");
+
+        Label description = new Label("Errors and warnings per minute for the active filters");
+        VBox timelinePanel = panel("Timeline", description, timelineChart);
+        timelineChart.setMinHeight(420);
+        timelineChart.setPrefHeight(520);
+        timelineChart.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(timelinePanel, Priority.ALWAYS);
+
+        VBox content = new VBox(18, eyebrow, title, timelinePanel);
+        content.setPadding(new Insets(26));
+        VBox.setVgrow(timelinePanel, Priority.ALWAYS);
+        return content;
+    }
+
+    private VBox createSavedFiltersContent() {
+        VBox list = new VBox(10);
+        for (FilterPreset preset : savedFilters) {
+            list.getChildren().add(filterRow(preset));
+        }
+
+        Button saveCurrent = new Button("Save current filter");
+        saveCurrent.getStyleClass().add("primary-button");
+        saveCurrent.setOnAction(event -> saveCurrentFilter());
+
+        return sectionContent(
+                "FILTERS",
+                "Saved filters",
+                "Apply a reusable search and level selection.",
+                saveCurrent,
+                list
+        );
+    }
+
+    private HBox filterRow(FilterPreset preset) {
+        Label name = new Label(preset.name());
+        name.getStyleClass().add("list-title");
+
+        Label summary = new Label(preset.summary());
+        summary.getStyleClass().add("panel-subtitle");
+
+        VBox text = new VBox(3, name, summary);
+        HBox.setHgrow(text, Priority.ALWAYS);
+
+        Button apply = new Button("Apply");
+        apply.setOnAction(event -> applyPreset(preset));
+
+        HBox row = new HBox(12, text, apply);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("list-row");
+        return row;
+    }
+
+    private VBox createRecentFilesContent() {
+        VBox list = new VBox(10);
+        if (recentFiles.isEmpty()) {
+            Label empty = new Label("No files opened in this session.");
+            empty.getStyleClass().add("empty-state");
+            list.getChildren().add(empty);
+        } else {
+            for (File file : recentFiles) {
+                list.getChildren().add(recentFileRow(file));
+            }
+        }
+
+        return sectionContent(
+                "FILES",
+                "Recent files",
+                "Reopen a file used during this application session.",
+                null,
+                list
+        );
+    }
+
+    private HBox recentFileRow(File file) {
+        Label name = new Label(file.getName());
+        name.getStyleClass().add("list-title");
+
+        Label path = new Label(file.getAbsolutePath());
+        path.getStyleClass().add("panel-subtitle");
+
+        VBox text = new VBox(3, name, path);
+        HBox.setHgrow(text, Priority.ALWAYS);
+
+        Button open = new Button("Open");
+        open.setDisable(!file.isFile());
+        open.setOnAction(event -> {
+            showView(View.LOG_VIEWER);
+            loadFile(file);
+        });
+
+        HBox row = new HBox(12, text, open);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("list-row");
+        return row;
+    }
+
+    private VBox sectionContent(
+            String eyebrowText,
+            String titleText,
+            String descriptionText,
+            Node action,
+            Node body
+    ) {
+        Label eyebrow = new Label(eyebrowText);
+        eyebrow.getStyleClass().add("eyebrow");
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("page-title");
+
+        Label description = new Label(descriptionText);
+        description.getStyleClass().add("panel-subtitle");
+
+        HBox heading = new HBox(12, title);
+        heading.setAlignment(Pos.CENTER_LEFT);
+        if (action != null) {
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            heading.getChildren().addAll(spacer, action);
+        }
+
+        VBox content = new VBox(12, eyebrow, heading, description, new Separator(), body);
+        content.setPadding(new Insets(26));
         return content;
     }
 
@@ -345,6 +507,38 @@ public class DashboardView extends BorderPane {
         return value.isBlank() ? "-" : value;
     }
 
+    private void saveCurrentFilter() {
+        TextInputDialog dialog = new TextInputDialog("My filter");
+        dialog.setTitle("Save filter");
+        dialog.setHeaderText("Save the current search and level selection");
+        dialog.setContentText("Name");
+
+        dialog.showAndWait()
+                .map(String::strip)
+                .filter(name -> !name.isBlank())
+                .ifPresent(name -> {
+                    savedFilters.add(new FilterPreset(
+                            name,
+                            search.getText(),
+                            errorFilter.isSelected(),
+                            warningFilter.isSelected(),
+                            infoFilter.isSelected(),
+                            otherFilter.isSelected()
+                    ));
+                    showView(View.SAVED_FILTERS);
+                });
+    }
+
+    private void applyPreset(FilterPreset preset) {
+        search.setText(preset.query());
+        errorFilter.setSelected(preset.errors());
+        warningFilter.setSelected(preset.warnings());
+        infoFilter.setSelected(preset.info());
+        otherFilter.setSelected(preset.other());
+        applyFilters();
+        showView(View.LOG_VIEWER);
+    }
+
     private void applyFilters() {
         String query = search.getText().strip().toLowerCase(Locale.ROOT);
         filteredEntries.setPredicate(entry -> levelIsSelected(entry.level()) && matchesQuery(entry, query));
@@ -401,6 +595,7 @@ public class DashboardView extends BorderPane {
 
         task.setOnSucceeded(event -> {
             showAnalysis(task.getValue());
+            addRecentFile(file);
             openButton.setDisable(false);
         });
         task.setOnFailed(event -> {
@@ -413,6 +608,14 @@ public class DashboardView extends BorderPane {
         Thread thread = new Thread(task, "log-file-parser");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void addRecentFile(File file) {
+        recentFiles.removeIf(recent -> recent.equals(file));
+        recentFiles.addFirst(file);
+        if (recentFiles.size() > 8) {
+            recentFiles.removeLast();
+        }
     }
 
     private void showAnalysis(LogAnalysis analysis) {
@@ -458,5 +661,40 @@ public class DashboardView extends BorderPane {
 
     private String format(int value) {
         return String.format(Locale.ROOT, "%,d", value);
+    }
+
+    private enum View {
+        LOG_VIEWER,
+        TIMELINE,
+        SAVED_FILTERS,
+        RECENT_FILES
+    }
+
+    private record FilterPreset(
+            String name,
+            String query,
+            boolean errors,
+            boolean warnings,
+            boolean info,
+            boolean other
+    ) {
+        private String summary() {
+            List<String> levels = new ArrayList<>();
+            if (errors) {
+                levels.add("ERROR");
+            }
+            if (warnings) {
+                levels.add("WARN");
+            }
+            if (info) {
+                levels.add("INFO");
+            }
+            if (other) {
+                levels.add("OTHER");
+            }
+
+            String levelText = levels.isEmpty() ? "No levels" : String.join(", ", levels);
+            return query.isBlank() ? levelText : levelText + " - search: " + query;
+        }
     }
 }
