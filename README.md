@@ -4,6 +4,12 @@
 
 LogScope is a JavaFX desktop application for inspecting application logs locally. It parses plain-text, Spring Boot and structured JSON logs without uploading operational data to an external service.
 
+![LogScope log viewer](docs/images/log-viewer.png)
+
+## Timeline
+
+![LogScope event timeline](docs/images/timeline.png)
+
 ## Features
 
 - Open files through a file picker or drag-and-drop
@@ -30,6 +36,12 @@ Then open or drag one of the included files into the application:
 
 - `demo/sample-application.log`
 - `demo/sample-structured.jsonl`
+
+The application also accepts a file path and optional initial view:
+
+```powershell
+mvn javafx:run -Djavafx.args="demo/sample-application.log --view=timeline"
+```
 
 Suggested demo flow:
 
@@ -116,6 +128,8 @@ Build an MSI on a machine with WiX installed:
 ```powershell
 .\scripts\package-windows.ps1 -Type msi
 ```
+
+Tags matching `v*.*.*` trigger the release workflow. It builds a standalone Windows application and publishes `LogScope-windows-x64.zip` to GitHub Releases.
 
 ## Project Structure
 

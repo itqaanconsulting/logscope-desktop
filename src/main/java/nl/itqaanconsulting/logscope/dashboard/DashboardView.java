@@ -76,14 +76,22 @@ public class DashboardView extends BorderPane {
     private View activeView = View.LOG_VIEWER;
 
     public DashboardView() {
+        this(null, false);
+    }
+
+    public DashboardView(File initialFile, boolean showTimeline) {
         savedFilters.add(new FilterPreset("Errors only", "", true, false, false, false));
         savedFilters.add(new FilterPreset("Warnings and errors", "", true, true, false, false));
         getStyleClass().add("app-shell");
         setTop(createHeader());
         setLeft(createNavigation());
-        showView(View.LOG_VIEWER);
         configureFiltering();
         configureDragAndDrop();
+        showView(showTimeline ? View.TIMELINE : View.LOG_VIEWER);
+        if (initialFile != null) {
+            fileName.setText(initialFile.getName());
+            loadFile(initialFile);
+        }
     }
 
     private HBox createHeader() {

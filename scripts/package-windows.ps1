@@ -1,6 +1,9 @@
 param(
     [ValidateSet("app-image", "msi")]
-    [string]$Type = "app-image"
+    [string]$Type = "app-image",
+
+    [ValidatePattern("^\d+\.\d+\.\d+$")]
+    [string]$AppVersion = "0.1.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -69,7 +72,7 @@ try {
     $arguments = @(
         "--type", $Type,
         "--name", "LogScope",
-        "--app-version", "0.1.0",
+        "--app-version", $AppVersion,
         "--vendor", "Itqaan Consulting",
         "--description", "Desktop log analysis application",
         "--input", $inputDirectory,
