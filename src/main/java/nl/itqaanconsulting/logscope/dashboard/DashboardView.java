@@ -32,6 +32,7 @@ import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.stage.FileChooser;
 import nl.itqaanconsulting.logscope.log.LogAnalysis;
+import nl.itqaanconsulting.logscope.log.LogCsvExporter;
 import nl.itqaanconsulting.logscope.log.LogEntry;
 import nl.itqaanconsulting.logscope.log.LogFileParser;
 import nl.itqaanconsulting.logscope.log.LogFileSupport;
@@ -50,6 +51,7 @@ import java.util.function.Function;
 public class DashboardView extends BorderPane {
 
     private final LogFileParser parser = new LogFileParser();
+    private final LogCsvExporter csvExporter = new LogCsvExporter();
     private final TimelineAggregator timelineAggregator = new TimelineAggregator();
     private final ObservableList<LogEntry> entries = FXCollections.observableArrayList();
     private final FilteredList<LogEntry> filteredEntries = new FilteredList<>(entries);
@@ -170,7 +172,19 @@ public class DashboardView extends BorderPane {
         search.getStyleClass().add("search-field");
         HBox.setHgrow(search, Priority.ALWAYS);
 
-        HBox filters = new HBox(12, search, errorFilter, warningFilter, infoFilter, otherFilter);
+        Button exportButton = new Button("Export CSV");
+        exportButton.getStyleClass().add("secondary-button");
+        exportButton.setOnAction(event -> exportFilteredEntries());
+
+        HBox filters = new HBox(
+                12,
+                search,
+                errorFilter,
+                warningFilter,
+                infoFilter,
+                otherFilter,
+                exportButton
+        );
         filters.setAlignment(Pos.CENTER_LEFT);
         filters.getStyleClass().add("filter-bar");
 
@@ -579,6 +593,43 @@ public class DashboardView extends BorderPane {
         if (selected != null) {
             loadFile(selected);
         }
+    }
+
+    private void exportFilteredEntries() {
+        if (filteredEntries.isEmpty()) {
+            status.setText("Nothing to export. Adjust the filters or open a log file.");
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export filtered log entries");
+        chooser.setInitialFileName(exportFileName());
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("CSV files", "*.csv")
+        );
+
+        File target = chooser.showSaveDialog(getScene().getWindow());
+        if (target == null) {
+            return;
+        }
+
+        try {
+            csvExporter.export(target.toPath(), List.copyOf(filteredEntries));
+            status.setText("Exported " + format(filteredEntries.size()) + " entries to " + target.getName());
+        } catch (java.io.IOException exception) {
+            status.setText("Could not export CSV: " + exception.getMessage());
+        }
+    }
+
+    private String exportFileName() {
+        String currentName = fileName.getText();
+        if ("No log file selected".equals(currentName)) {
+            return "logscope-export.csv";
+        }
+
+        int extensionStart = currentName.lastIndexOf('.');
+        String baseName = extensionStart > 0 ? currentName.substring(0, extensionStart) : currentName;
+        return baseName + "-filtered.csv";
     }
 
     private void loadFile(File file) {

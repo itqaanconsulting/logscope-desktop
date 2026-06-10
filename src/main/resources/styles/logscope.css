@@ -38,6 +38,20 @@
     -fx-background-color: #08705f;
 }
 
+.secondary-button {
+    -fx-padding: 7 12;
+    -fx-background-color: white;
+    -fx-background-radius: 5;
+    -fx-border-color: #9bb0ba;
+    -fx-border-radius: 5;
+    -fx-text-fill: #29404f;
+    -fx-font-weight: bold;
+}
+
+.secondary-button:hover {
+    -fx-background-color: #eef3f4;
+}
+
 .navigation {
     -fx-padding: 25 14;
     -fx-background-color: #ffffff;

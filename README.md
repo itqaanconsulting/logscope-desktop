@@ -8,6 +8,8 @@ LogScope can open or receive log files through drag-and-drop, parse them asynchr
 
 The sidebar provides dedicated log viewer, timeline, saved filter and recent file views. Saved filters and recent files are retained for the current application session.
 
+The current filtered result set can be exported as a UTF-8 CSV file for further analysis or sharing.
+
 ## Run
 
 ```powershell
@@ -38,5 +40,4 @@ mvn test
 - Filter by level, service, time and correlation ID
 - Search plain-text and structured JSON logs
 - Inspect stack traces and log details
-- Export filtered results
 - Package a Windows installer with `jpackage`
