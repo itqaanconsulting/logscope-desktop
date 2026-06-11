@@ -83,6 +83,7 @@ public class DashboardView extends BorderPane {
         savedFilters.add(new FilterPreset("Errors only", "", true, false, false, false));
         savedFilters.add(new FilterPreset("Warnings and errors", "", true, true, false, false));
         getStyleClass().add("app-shell");
+        status.getStyleClass().add("status-text");
         setTop(createHeader());
         setLeft(createNavigation());
         configureFiltering();
